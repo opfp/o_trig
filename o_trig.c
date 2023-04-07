@@ -34,7 +34,7 @@ int o_trig_init(/*char * table_fp, int tbs_to_load*/) {
 		
 	} 
 	*/
-	o_trig_obj.points = 1000; 
+	o_trig_obj.points = 1000;//0; 
 	o_trig_obj.contents = 3;
 	gen_lookup_tables(&o_trig_obj); 
     return 0; // just for now 
@@ -53,7 +53,7 @@ int o_trig_init(/*char * table_fp, int tbs_to_load*/) {
 */ 
 
 float o_trig_lookup(enum func infunc, float inval, int quick) { 
-    assert( infunc >= 0 && infunc < NUM_FUNCS && "lookup: invalid function" ); 
+    assert( (infunc >= 0) && (infunc < NUM_FUNCS) && "lookup: invalid function" ); 
     // get function descriptor 
     function_des fdes = FUNC_DES[infunc]; 
     // check inval in function range 
@@ -174,13 +174,13 @@ int gen_lookup_tables( table_set * dest ) {
 		if ( tables_to_make & ( 1 << TB_SINE_COS ) ) { 
 			o_trig_obj.tables[TB_SINE_COS][i*2] = cy / hyp_len; 
 			o_trig_obj.tables[TB_SINE_COS][(i*2)+1] = c_circ_len;
-    //        printf("sin(%f) = %f\n", o_trig_obj.tables[TB_SINE_COS][i*2], o_trig_obj.tables[TB_SINE_COS][(i*2)+1]); 
+            printf("sin(%f) = %f\n", o_trig_obj.tables[TB_SINE_COS][i*2], o_trig_obj.tables[TB_SINE_COS][(i*2)+1]); 
 		} 
 
 		if ( tables_to_make & ( 1 << TB_TAN ) ) { 
 			o_trig_obj.tables[TB_TAN][i*2] = cy / cx; 
 			o_trig_obj.tables[TB_TAN][(i*2)+1] = c_circ_len; 
-   //         printf("tan(%f) = %f\n", o_trig_obj.tables[TB_TAN][i*2], o_trig_obj.tables[TB_TAN][(i*2)+1]); 
+            printf("tan(%f) = %f\n", o_trig_obj.tables[TB_TAN][i*2], o_trig_obj.tables[TB_TAN][(i*2)+1]); 
 		} 		 
 
 		// prepare for next point generation 
