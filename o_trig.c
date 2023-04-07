@@ -5,9 +5,9 @@ table_set o_trig_obj = {0};
 
 const function_des FUNC_DES[] = { 
 //  rmin    rmax   tmin     tmax    transformer func    table           ascending 
-	{NAN,   NAN,    0,      M_PI/2, &trans_sine,        TB_SINE_COS,    1 },	    // SINE  
+	{NAN,   NAN,    0,      M_PI_2, &trans_sine,        TB_SINE_COS,    1 },	    // SINE  
 	{-1,    1,      -1,     1,      NULL,               TB_SINE_COS,    1 }, 		// ARCSINE 
-	{NAN,    NAN,   0,      M_PI/2, &trans_cosine,      TB_SINE_COS,    0 }, 	    // COS
+	{NAN,    NAN,   0,      M_PI_2, &trans_cosine,      TB_SINE_COS,    0 }, 	    // COS
 	{-1,    1,      -1,     1,      &trans_arc_cosine,  TB_SINE_COS,    0 }, 		// ARCCOS 
 	{NAN,   NAN,    0,      M_PI,   &trans_tan,         TB_TAN,         1 }, 		// TAN 
     {NAN,   NAN,    NAN,    NAN,    NULL,               TB_TAN,         1 }        	// ARCTAN
@@ -136,7 +136,7 @@ int gen_lookup_tables( table_set * dest ) {
 	// (magic number) constants (should be set elsewhere in production) 
 	// float accuracy = 0x100; // if ( c_dif * accuraccy >= 1 ), point is not "close enough" to being on the circle 
 	
-    float retry_inc_constant = -1 / ( ACC_CONST * 2 ) ; 
+    float retry_inc_constant = 1 / ( ACC_CONST * 2 ) ; 
 
 	// point cloud generator vals 
 	float y_inc = /*1*/ .5 / point_density;  
@@ -174,16 +174,13 @@ int gen_lookup_tables( table_set * dest ) {
 		if ( tables_to_make & ( 1 << TB_SINE_COS ) ) { 
 			o_trig_obj.tables[TB_SINE_COS][i*2] = cy / hyp_len; 
 			o_trig_obj.tables[TB_SINE_COS][(i*2)+1] = c_circ_len;
-            printf("sin(%f) = %f\n", o_trig_obj.tables[TB_SINE_COS][i*2], o_trig_obj.tables[TB_SINE_COS][(i*2)+1]); 
+    //        printf("sin(%f) = %f\n", o_trig_obj.tables[TB_SINE_COS][i*2], o_trig_obj.tables[TB_SINE_COS][(i*2)+1]); 
 		} 
-//		if ( tables_to_make & ( 1 << cosine ) ) { 
-//			o_trig_obj[cosine][i*2] = cx / hyp_len; 
-//			o_trig_obj[cosine][(i*2)+1] = c_circ_len; 
-//		} 
+
 		if ( tables_to_make & ( 1 << TB_TAN ) ) { 
-			o_trig_obj.tables[TB_TAN][i*2] = cx / cy; 
+			o_trig_obj.tables[TB_TAN][i*2] = cy / cx; 
 			o_trig_obj.tables[TB_TAN][(i*2)+1] = c_circ_len; 
-            printf("tan(%f) = %f\n", o_trig_obj.tables[TB_TAN][i*2], o_trig_obj.tables[TB_TAN][(i*2)+1]); 
+   //         printf("tan(%f) = %f\n", o_trig_obj.tables[TB_TAN][i*2], o_trig_obj.tables[TB_TAN][(i*2)+1]); 
 		} 		 
 
 		// prepare for next point generation 
@@ -296,7 +293,7 @@ void trans_sine(float x_in, float * p_x_trans, float * p_mirror_ab ) {
 */  
 
 void trans_cosine(float x_in, float * p_x_trans, float * p_mirror_ab) { 
-    return trans_sine(x_in + M_PI_2, p_x_trans, p_mirror_ab);
+	trans_sine(x_in + M_PI_2, p_x_trans, p_mirror_ab);
 } 
 
 /* 
