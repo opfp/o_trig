@@ -6,17 +6,34 @@
 #include <math.h>
 #include <assert.h> 
 
-// # define M_PI		3.14159265358979323846	/* pi */
-// # define M_PI_2		1.57079632679489661923	/* pi/2 */
-// # define M_PI_4		0.78539816339744830962	/* pi/4 */ 
+// Ensure math.h constants defined 
+#ifndef M_PI 
+# define M_PI		3.14159265358979323846	/* pi */
+#endif 
+#ifndef M_PI_2 
+# define M_PI_2		1.57079632679489661923	/* pi/2 */
+#endif 
+#ifndef M_PI_4 
+# define M_PI_4		0.78539816339744830962	/* pi/4 */ 
+#endif 
 
+// Default accuracy / generation settings 
+
+#define TBS_TO_MAKE 3 
 #define NUM_TABLES 2 
-#define NUM_FUNCS 6 
+#define NUM_FUNCS 6
+ 
+#ifndef ACC_CONST 
+# define ACC_CONST 1024.0 
+#endif 
 
+#ifndef POINTS 
+# define POINTS 2048 
+#endif  
+
+// Distance formula 
 #define DIST(x1,y1,x2,y2) ( (float) sqrt( pow( (float)x2 - (float) x1, 2) + pow( (float)y2 - (float) y1, 2) ) ) 
 
-// magic numbers 
-#define ACC_CONST 1024.0 
 
 //enum func{sine, cosine, tangent, arc_sine, arc_cosine, arc_tangent};
 enum tables{TB_SINE_COS, TB_TAN}; 

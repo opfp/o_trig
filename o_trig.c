@@ -34,8 +34,8 @@ int o_trig_init(/*char * table_fp, int tbs_to_load*/) {
 		
 	} 
 	*/
-	o_trig_obj.points = 1000;//0; 
-	o_trig_obj.contents = 3;
+	o_trig_obj.points = POINTS;//0; 
+	o_trig_obj.contents = TBS_TO_MAKE;
 	gen_lookup_tables(&o_trig_obj); 
     return 0; // just for now 
 } 
@@ -103,6 +103,17 @@ float o_trig_lookup(enum func infunc, float inval, int quick) {
     return result; 
 }
 
+/* 
+    * @scope public  
+    * @brief Saves lookup table as csv file 
+    * @param Table the table to be saved 
+    * @param Outpath The path of the .csv out 
+*/ 
+
+// int save_csv( float * TABLE, char * outpath ) { 
+
+// } 
+
 // PRIVATE FUNCTIONS 
 
 /* 
@@ -149,7 +160,10 @@ int gen_lookup_tables( table_set * dest ) {
 	float cy; 
 
 	float c_dif;  
-	float hyp_len; 	
+	float hyp_len;
+
+    float o_h;
+    float o_a;
 
 	for ( int i = 0; i < point_density; i++ ) { 
 		// find point on circle at this height 
@@ -166,21 +180,27 @@ int gen_lookup_tables( table_set * dest ) {
             undershoot++; 
 			c_dif = DIST(0,0,cx,cy) - 1.0;
 		}  
-        printf("(%f,%f) {undershot %i times}\n", cx, cy, undershoot); 
+ //       printf("(%f,%f) {undershot %i times}\n", cx, cy, undershoot); 
 		// with (cx, cy) a point on the circle, incriment angle 
 		c_circ_len += DIST(px,py,cx,cy);
 		hyp_len = DIST(0,0,cx,cy);  
 		// now, with a point on the circle and it's corresponding angle, fill in function solutions ( i -> [ r, xxx(r) ] ) with xxx sine, cosine, tangent . . .  
 		if ( tables_to_make & ( 1 << TB_SINE_COS ) ) { 
-			o_trig_obj.tables[TB_SINE_COS][i*2] = cy / hyp_len; 
+			o_h = cy / hyp_len; 
+            // sine = c_circ_len; 
+
+            o_trig_obj.tables[TB_SINE_COS][i*2] = o_h; 
 			o_trig_obj.tables[TB_SINE_COS][(i*2)+1] = c_circ_len;
-            printf("sin(%f) = %f\n", o_trig_obj.tables[TB_SINE_COS][i*2], o_trig_obj.tables[TB_SINE_COS][(i*2)+1]); 
+            // printf("sin(%f) = %f\n", o_trig_obj.tables[TB_SINE_COS][i*2], o_trig_obj.tables[TB_SINE_COS][(i*2)+1]); 
+            printf("%f , %f\n", o_h, c_circ_len);  
 		} 
 
 		if ( tables_to_make & ( 1 << TB_TAN ) ) { 
-			o_trig_obj.tables[TB_TAN][i*2] = cy / cx; 
-			o_trig_obj.tables[TB_TAN][(i*2)+1] = c_circ_len; 
-            printf("tan(%f) = %f\n", o_trig_obj.tables[TB_TAN][i*2], o_trig_obj.tables[TB_TAN][(i*2)+1]); 
+            o_a = cy / cx; 
+			o_trig_obj.tables[TB_TAN][i*2] = o_a; 
+			o_trig_obj.tables[TB_TAN][(i*2)+1] = c_circ_len;
+//			printf("%f , %f\n", o_a, c_circ_len );  
+            // printf("tan(%f) = %f\n", o_trig_obj.tables[TB_TAN][i*2], o_trig_obj.tables[TB_TAN][(i*2)+1]); 
 		} 		 
 
 		// prepare for next point generation 
