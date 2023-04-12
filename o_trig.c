@@ -75,14 +75,15 @@ float o_trig_lookup(enum func infunc, float inval, int quick) {
 
     // note that this is the index of X, not the result(Y)  
     int match_i = ltable_bsearch(table, trans_inval, infunc%2, fdes.ascending ); 
-    int y_idx = infunc%2 ? 1 : -1; 
+    // int y_idx = infunc%2 ? 1 : -1; 
+    int y_idx = infunc%2 ? -1 : 1; 
 
     float real_in = table[match_i]; 
     float result = table[match_i + y_idx]; 
 
-    float inval_dif = real_in - inval;  
+    float inval_dif; //  = real_in - inval;  
 
-    if ( !quick && ((int) real_in * ACC_CONST) /*&& match_i >> 2 && match_i < o_trig_obj ) */ ) { 
+    if ( !quick && ( fabs(inval_dif = real_in - inval) > ACC_CONST ) ) { 
         int next_i;
         if ( !(match_i+2< o_trig_obj.points ) && ( match_i < 2 || fdes.ascending && inval_dif > 0
             || !fdes.ascending && inval_dif < 0 ) )
@@ -126,7 +127,7 @@ float o_trig_lookup(enum func infunc, float inval, int quick) {
 */ 
 
 int gen_lookup_tables( table_set * dest ) { 
-	int point_density = dest->points; 
+	int points = dest->points; 
 	int tables_to_make = dest->contents; 
 
 	// if tables_to_make is null, make them all 
@@ -135,81 +136,74 @@ int gen_lookup_tables( table_set * dest ) {
 	int mask = 1;  
 	for ( int i = 0; i < NUM_FUNCS; i++ ) { 
 		if ( mask & tables_to_make ) { 
-			o_trig_obj.tables[i] = malloc(point_density * 2 * sizeof(float)); 
+			o_trig_obj.tables[i] = malloc(points * 2 * sizeof(float)); 
 		}
 		mask <<= 1;  
 	}  
  
 	// make point cloud y -> x ( y = i * ( 1 / point_density ) ) 
-	float c_circ_len = 0; 
-	//float * point_cloud = malloc(point_density * sizeof(float));
 
-	// (magic number) constants (should be set elsewhere in production) 
-	// float accuracy = 0x100; // if ( c_dif * accuraccy >= 1 ), point is not "close enough" to being on the circle 
-	
-    float retry_inc_constant = 1 / ( ACC_CONST * 2 ) ; 
+    /* 
+     formula of our circle: 1 = x^2 + y^2 
+     We can use the quadratic formula to find the next point which satisfies the equation 
+     (after incrimenting either X or Y, in this case X) 
+    */ 
 
-	// point cloud generator vals 
-	float y_inc = /*1*/ .5 / point_density;  
-	float px = 1;
-	float py = 0;
-	float x_inc = 0; 
-    // float x_inc_temp;
-    int undershoot;  
-	float cx; 
-	float cy; 
+   float px = M_SQRT2/2.0; 
+   float py = px; 
 
-	float c_dif;  
-	float hyp_len;
+   float x_inc_per_point = (1.0 - px ) / points; 
 
-    float o_h;
-    float o_a;
+   if ( VDEBUG ) printf("x_inc_per_point : %f\n", x_inc_per_point); 
 
-	for ( int i = 0; i < point_density; i++ ) { 
-		// find point on circle at this height 
-		cx = px - x_inc; 
-		cy = py + y_inc; 
+   float cx; 
+   float cy; 
+   float hyp_len; 
+   float arc_len = M_PI_4; 
+
+   int i = points; 
+
+   while ( i > -1 ) { 
+        cx = px + x_inc_per_point;  
+        cy = QUAD_SOLVE_P(1,0, (pow(cx,2) - 1.0) ); 
+
+        if ( VDEBUG ) printf("%f, %f\n", cx, cy); 
+        
+        hyp_len = DIST(0,0,cx,cy); 
+        if ( VDEBUG ) printf("hyp_len %f\n", hyp_len); 
+        
+        // assert( hyp_len - 1.0 < .0000002 && hyp_len - 1.0 > -.0000002 ); 
+        if ( !( hyp_len - 1.0 < .0000002 && hyp_len - 1.0 > -.0000002 ) ) { 
+            if ( VDEBUG ) printf("failed at i= %i (points = %i)\n", i, points); 
+            break; 
+        } 
+
+        // hyp_len = DIST( (px), (py), (cx), (cy) ); 
+
+        // printf("point distance: %f\n", hyp_len); 
+
+        arc_len -=  DIST(px, py, cx, cy ); 
 		
-		c_dif = DIST(0,0,cx,cy) - 1.0;
-        // x_inc_temp = 
-         
-        undershoot = 0; 
-		while ( (int) ( c_dif * ACC_CONST ) ) { // while point not close enough to circle  
-			assert(c_dif > 0 && "unexpected overshoot" );
-            cx -= retry_inc_constant;
-            undershoot++; 
-			c_dif = DIST(0,0,cx,cy) - 1.0;
-		}  
- //       printf("(%f,%f) {undershot %i times}\n", cx, cy, undershoot); 
-		// with (cx, cy) a point on the circle, incriment angle 
-		c_circ_len += DIST(px,py,cx,cy);
-		hyp_len = DIST(0,0,cx,cy);  
-		// now, with a point on the circle and it's corresponding angle, fill in function solutions ( i -> [ r, xxx(r) ] ) with xxx sine, cosine, tangent . . .  
-		if ( tables_to_make & ( 1 << TB_SINE_COS ) ) { 
-			o_h = cy / hyp_len; 
-            // sine = c_circ_len; 
+        if ( tables_to_make & ( 1 << TB_SINE_COS ) ) { 
+            o_trig_obj.tables[TB_SINE_COS][i*2] = cy / hyp_len; 
+		    o_trig_obj.tables[TB_SINE_COS][(i*2)+1] = arc_len;
+            if ( VDEBUG ) printf("sin(%f) = %f\n", o_trig_obj.tables[TB_SINE_COS][i*2], o_trig_obj.tables[TB_SINE_COS][(i*2)+1]); 
+        } 
 
-            o_trig_obj.tables[TB_SINE_COS][i*2] = o_h; 
-			o_trig_obj.tables[TB_SINE_COS][(i*2)+1] = c_circ_len;
-            // printf("sin(%f) = %f\n", o_trig_obj.tables[TB_SINE_COS][i*2], o_trig_obj.tables[TB_SINE_COS][(i*2)+1]); 
-            printf("%f , %f\n", o_h, c_circ_len);  
-		} 
+        if ( tables_to_make & ( 1 << TB_TAN ) ) { 
+            o_trig_obj.tables[TB_TAN][i*2] = cy / cx; 
+		    o_trig_obj.tables[TB_TAN][(i*2)+1] = arc_len;
+            if ( VDEBUG ) printf("tan(%f) = %f\n", o_trig_obj.tables[TB_TAN][i*2], o_trig_obj.tables[TB_TAN][(i*2)+1]); 
+        } 
 
-		if ( tables_to_make & ( 1 << TB_TAN ) ) { 
-            o_a = cy / cx; 
-			o_trig_obj.tables[TB_TAN][i*2] = o_a; 
-			o_trig_obj.tables[TB_TAN][(i*2)+1] = c_circ_len;
-//			printf("%f , %f\n", o_a, c_circ_len );  
-            // printf("tan(%f) = %f\n", o_trig_obj.tables[TB_TAN][i*2], o_trig_obj.tables[TB_TAN][(i*2)+1]); 
-		} 		 
+        px = cx; 
+        py = cy; 
+        --i; 
+	} 
 
-		// prepare for next point generation 
-		x_inc = cx - px; 
-        // x_inc += undershoot * retry_inc_constant; 
-		px = cx; 
-		py = cy; 
-	}   
-	return 0; // just for now 
+    if ( VDEBUG ) printf("arc len innacuracy (should be 0): %f\n", arc_len ); 
+
+    return 0; // just for now 
 }
 
 /* 
@@ -227,7 +221,7 @@ int gen_lookup_tables( table_set * dest ) {
 int ltable_bsearch( float * table, float search_val, int offset, char ascending) { 
 	int points = o_trig_obj.points; 
     int search_inc = points / 2; 
-	unsigned si = points + offset; 
+	unsigned si = points; //points + offset; 
 	// check edge cases
 	int i_high = ascending ? (points*2)-2+offset : offset;   
 	int i_low = ascending ? offset : (points*2)-2+offset; 	

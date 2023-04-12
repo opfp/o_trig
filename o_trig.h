@@ -24,16 +24,27 @@
 #define NUM_FUNCS 6
  
 #ifndef ACC_CONST 
-# define ACC_CONST 1024.0 
+# define ACC_CONST .000002 
 #endif 
 
 #ifndef POINTS 
 # define POINTS 2048 
 #endif  
 
-// Distance formula 
-#define DIST(x1,y1,x2,y2) ( (float) sqrt( pow( (float)x2 - (float) x1, 2) + pow( (float)y2 - (float) y1, 2) ) ) 
+#ifndef VDEBUG  
+# define VDEBUG 0 
+#endif 
 
+// usefull formulas 
+
+// #define C_PRIME(x) ( -1.0 * (float) x ) * ( 1 / sqrt( ( -1.0 * pow(x, 2.0) ) + 1.0 ) )  
+//#define DIST(x1,y1,x2,y2) ( (float) sqrt( pow( (float)x2 - (float) x1, 2) + pow( (float)y2 - (float) y1, 2) ) ) 
+
+#define DIST(x1,y1,x2,y2) ( sqrt( pow(x2 - ( (float) x1) , 2) + pow(y2 - ( (float) y1) , 2 ) ) ) 
+
+// quadratic formula (+) 
+
+#define QUAD_SOLVE_P(a,b,c) ( /*(float)*/ ( (-1.0 * b) + sqrt( pow(b,2) - (4.0 * a * c) ) ) / (2.0 * a) )
 
 //enum func{sine, cosine, tangent, arc_sine, arc_cosine, arc_tangent};
 enum tables{TB_SINE_COS, TB_TAN}; 
