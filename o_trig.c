@@ -73,7 +73,7 @@ float o_trig_lookup(enum func infunc, float inval, int quick) {
     assert ( trans_inval >= fdes.table_range_min && trans_inval <= fdes.table_range_max && "transform failed"); 
     float * table = o_trig_obj.tables[fdes.table]; 
 
-    // note that this is the index of X, not the result(Y)  
+    // note that this is the index of X, not the result(Y) ( in the case of inverses, the return is Y ) 
     int match_i = ltable_bsearch(table, trans_inval, infunc%2, fdes.ascending ); 
     // int y_idx = infunc%2 ? 1 : -1; 
     int y_idx = infunc%2 ? -1 : 1; 
@@ -165,12 +165,12 @@ int gen_lookup_tables( table_set * dest ) {
 
    while ( i > -1 ) { 
         cx = px + x_inc_per_point;  
-        cy = QUAD_SOLVE_P(1,0, (pow(cx,2) - 1.0) ); 
+        cy = QUAD_SOLVE_P(1,0, (pow(cx,2) - 1.0) ); // use quadratic formula to find next point on circle 
 
         if ( VDEBUG ) printf("%f, %f\n", cx, cy); 
         
         hyp_len = DIST(0,0,cx,cy); 
-        if ( VDEBUG ) printf("hyp_len %f\n", hyp_len); 
+        // if ( VDEBUG ) printf("hyp_len %f\n", hyp_len); 
         
         // assert( hyp_len - 1.0 < .0000002 && hyp_len - 1.0 > -.0000002 ); 
         if ( !( hyp_len - 1.0 < .0000002 && hyp_len - 1.0 > -.0000002 ) ) { 
@@ -185,14 +185,14 @@ int gen_lookup_tables( table_set * dest ) {
         arc_len -=  DIST(px, py, cx, cy ); 
 		
         if ( tables_to_make & ( 1 << TB_SINE_COS ) ) { 
-            o_trig_obj.tables[TB_SINE_COS][i*2] = cy / hyp_len; 
-		    o_trig_obj.tables[TB_SINE_COS][(i*2)+1] = arc_len;
+		    o_trig_obj.tables[TB_SINE_COS][i*2] = arc_len; // theta 
+            o_trig_obj.tables[TB_SINE_COS][(i*2)+1] = cy; // sine(theta) 
             if ( VDEBUG ) printf("sin(%f) = %f\n", o_trig_obj.tables[TB_SINE_COS][i*2], o_trig_obj.tables[TB_SINE_COS][(i*2)+1]); 
         } 
 
         if ( tables_to_make & ( 1 << TB_TAN ) ) { 
-            o_trig_obj.tables[TB_TAN][i*2] = cy / cx; 
-		    o_trig_obj.tables[TB_TAN][(i*2)+1] = arc_len;
+		    o_trig_obj.tables[TB_TAN][i*2] = arc_len; // theta 
+            o_trig_obj.tables[TB_TAN][(i*2)+1] = cy / cx; // tan(theta) 
             if ( VDEBUG ) printf("tan(%f) = %f\n", o_trig_obj.tables[TB_TAN][i*2], o_trig_obj.tables[TB_TAN][(i*2)+1]); 
         } 
 
@@ -221,7 +221,7 @@ int gen_lookup_tables( table_set * dest ) {
 int ltable_bsearch( float * table, float search_val, int offset, char ascending) { 
 	int points = o_trig_obj.points; 
     int search_inc = points / 2; 
-	unsigned si = points; //points + offset; 
+	unsigned si = points + offset;
 	// check edge cases
 	int i_high = ascending ? (points*2)-2+offset : offset;   
 	int i_low = ascending ? offset : (points*2)-2+offset; 	
@@ -234,13 +234,18 @@ int ltable_bsearch( float * table, float search_val, int offset, char ascending)
  
 	char up_gz; 
 	char dw_gz; 
+
+    float up_dif; 
+    float dw_dif; 
 	
 	while (1) { 
-		up_gz = (table[si+offset+2] - search_val) > 0; 
-		dw_gz = (table[si+offset-2] - search_val) > 0; 
+		up_gz = ( up_dif = table[si+2] - search_val) > 0; // find the parity of i+1 and i-1 
+		dw_gz = ( dw_dif = table[si-2] - search_val) > 0; // (really i+2 / i-2 because of the offset) 
 		
-		if ( up_gz != dw_gz ) { 
-			return si; 
+		if ( up_gz != dw_gz ) { // a parity change between i-1 and i+1 means we've hit our mark 
+			int closer_up_dw = fabs(up_dif) > fabs(dw_dif) ? si-2 : si+2; 
+            return fabs(table[si] - search_val ) > fabs(table[closer_up_dw] - search_val) ? closer_up_dw : si; 
+            // return si; 
 		} 
 		
 		if ( ( ascending && up_gz) || (!ascending && !up_gz) ) { // if ascending and too high, or descending and too low, search lower indicies  
@@ -267,8 +272,8 @@ int ltable_bsearch( float * table, float search_val, int offset, char ascending)
 void trans_sine(float x_in, float * p_x_trans, float * p_mirror_ab ) { 
     float mirror = NAN; 
     
-    // first, transform into (0, 2pi) (ternary ensures fmod result is non negitive 
-    float x_trans = fmod( ( x_in < 0 ) ? -1.0 * x_in : x_in , 2*M_PI ); 
+    // first, transform into (0, 2pi) (abs ensures fmod result is non negitive) 
+    float x_trans = fmod( fabs(x_in) , 2*M_PI ); 
     
     /* 
         TODO: This logic may be recreated with less branches. 

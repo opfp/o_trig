@@ -30,7 +30,7 @@ int main() {
         if ( !rc ) continue; 
 
         if ( func >= 0 && func < NUM_FUNCS && rc == 2 ) { 
-            printf("%s(%f) = %f\n", function_names[func], inval, o_trig_lookup(func, inval, 0 ) ); 
+            printf("%s(%f) = %f\n", function_names[func], inval, o_trig_lookup(func, inval, 1 ) ); 
         } 
         
         // else if ( func == -2 ) { 
