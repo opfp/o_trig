@@ -27,9 +27,9 @@ const char * function_names[] = {"SINE", "ARC SINE", "COSINE", "ARC COSINE", "TA
 	* 		lookup table for FUNC will be created 
 */ 
 
-table_set * o_trig_init(char * conf_st,  int tbs_to_load ) { 
+table_set * o_trig_init(/*char * conf_st,*/  int tbs_to_load, unsigned points ) { 
 	table_set * o_trig_obj = malloc(sizeof(table_set) ); 
-	o_trig_obj->points = POINTS;//0; 
+	o_trig_obj->points = points;//0; 
 	o_trig_obj->contents = tbs_to_load;
 	gen_lookup_tables(o_trig_obj); 
     
@@ -109,6 +109,99 @@ float o_trig_lookup(table_set * o_trig_obj, enum func infunc, float inval, int q
 }
 
 /* 
+	* @scope public 
+	* @brief loads lookup table into memory to be used to evaulate trig funtions 
+	* @param fp path to the lookup table on disk 
+*/ 
+
+table_set * o_trig_load_file( char * fp ) { 
+	FILE * FP = fopen(fp, "r");
+    if ( !FP ) { 
+        fprintf(stderr, "Cannot open table %s\n", fp); 
+        exit(-4); 
+    } 
+
+	u_int32_t points; 
+    char tables; 
+    int ecode; 
+
+    tables = fgetc(FP); 
+    if ( feof(FP) || ( fread( &points,1, 4, FP) != 4 ) ) { 
+        fprintf(stderr, "Invalid lookup table file: %s\n", fp); 
+        exit(-2); 
+    } 
+
+    table_set * ret = malloc( sizeof( table_set));
+
+    char mask = 1;  
+    for ( int i = 0; i < NUM_TABLES; i++ ) { 
+        if ( mask & tables ) { 
+            ret->tables[i] = malloc(points * 2 * sizeof(float) );
+            assert(ret->tables[i] && "Malloc fail" ); 
+            if ( fread(ret->tables[i], sizeof(float), points*2, FP ) != 2*points ) { 
+                fprintf(stderr, "Error reading in lookup table %i\n", i ); 
+                exit(-3); 
+            } 
+        } 
+        mask <<= 1; 
+    }  
+
+    if ( ! feof(FP) ) { 
+        fprintf(stderr, "Malformed lookup table file %s\n", fp); 
+        // exit(-3); 
+    } 
+
+    return ret; 
+} 
+
+/* 
+	* @scope public 
+	* @brief loads Saves generated lookup table to memory for future use 
+    * @param obj the table object to be saved  
+	* @param fp path to the lookup table on disk 
+*/ 
+
+void o_trig_write_file( table_set * obj, char * fp ) { 
+    // if ( access(fp, F_OK ) ) { 
+    //     fprintf(stderr, "File %s already exists\n", fp); 
+    //     exit( -4 ); 
+    // } 
+
+    FILE * FP = fopen(fp, "w+"); 
+    if ( !FP ) { 
+        fprintf(stderr, "Cannot creaet new file %s\n", fp); 
+    } 
+
+    fwrite(&obj->contents, 1, 1, FP); 
+    fwrite(&obj->points, 4, 1, FP); 
+
+    int mask = 1; 
+    for ( int i = 0; i < NUM_TABLES; i++ ) { 
+        if ( mask & obj->contents ) { 
+            assert( fwrite( obj->tables[i], sizeof(float), 2*obj->points, FP) == 2*obj->points && "Write failed" ); 
+        } 
+        mask <<= 1; 
+    } 
+
+    fflush(FP); 
+    fclose(FP); 
+
+} 
+
+/* 
+    * @scope public 
+    * @breif frees all memory allocated for this o_trig obj 
+    * @param obj the o_trig_obj to be freed 
+*/ 
+
+void o_trig_free( table_set * obj ) { 
+    for( int i = 0; i < NUM_TABLES; i++ ) { 
+        if ( obj->tables[i] ) free(obj->tables[i]); 
+    } 
+    free(obj); 
+} 
+
+/* 
     * @scope public  
     * @brief Saves lookup table as csv file 
     * @param Table the table to be saved 
@@ -169,14 +262,13 @@ int gen_lookup_tables( table_set * dest ) {
 
    char calc_sincos = tables_to_make & ( 1 << TB_SINE_COS ); 
    char calc_tan = tables_to_make & ( 1 << TB_TAN ); 
+   char rec_points = tables_to_make & ( 1 << TB_POINTS ); 
 //    int start_calc_tan = (points/2); 
     
     int i = 0; 
     while ( i < points ) { 
         cx = px - x_inc_per_point;  
         cy = QUAD_SOLVE_P(1,0, (pow(cx,2) - 1.0) ); // use quadratic formula to find next point on circle 
-
-        if ( VDEBUG ) printf("%f, %f\n", cx, cy); 
         
         hyp_len = DIST(0,0,cx,cy); 
         // if ( VDEBUG ) printf("hyp_len %f\n", hyp_len); 
@@ -203,6 +295,12 @@ int gen_lookup_tables( table_set * dest ) {
 		    dest->tables[TB_TAN][i*2] = arc_len; // theta 
             dest->tables[TB_TAN][(i*2)+1] = cy / cx; // tan(theta) 
             if ( VDEBUG ) printf("%i: tan(%f) = %f\n", i, dest->tables[TB_TAN][i*2], dest->tables[TB_TAN][(i*2)+1]); 
+        } 
+
+        if ( rec_points ) { 
+            dest->tables[TB_POINTS][i*2] = cx; 
+            dest->tables[TB_POINTS][(i*2)+1] = cy; 
+            if ( VDEBUG ) printf("%f, %f\n", cx, cy);  
         } 
 
         px = cx; 
