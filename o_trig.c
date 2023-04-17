@@ -122,16 +122,18 @@ table_set * o_trig_load_file( char * fp ) {
     } 
 
 	u_int32_t points; 
-    char tables; 
+    u_int32_t tables; 
     int ecode; 
 
-    tables = fgetc(FP); 
-    if ( feof(FP) || ( fread( &points,1, 4, FP) != 4 ) ) { 
+    if ( fread(&tables, 4, 1, FP) != 1 || fread( &points,4, 1, FP) != 1 ) { 
         fprintf(stderr, "Invalid lookup table file: %s\n", fp); 
         exit(-2); 
     } 
 
     table_set * ret = malloc( sizeof( table_set));
+
+    ret->points = points; 
+    ret-> contents = tables; 
 
     char mask = 1;  
     for ( int i = 0; i < NUM_TABLES; i++ ) { 
@@ -172,7 +174,7 @@ void o_trig_write_file( table_set * obj, char * fp ) {
         fprintf(stderr, "Cannot creaet new file %s\n", fp); 
     } 
 
-    fwrite(&obj->contents, 1, 1, FP); 
+    fwrite(&obj->contents, 4, 1, FP); 
     fwrite(&obj->points, 4, 1, FP); 
 
     int mask = 1; 
@@ -183,11 +185,10 @@ void o_trig_write_file( table_set * obj, char * fp ) {
         mask <<= 1; 
     } 
 
-    fflush(FP); 
+    // fflush(FP); 
     fclose(FP); 
 
 } 
-
 /* 
     * @scope public 
     * @breif frees all memory allocated for this o_trig obj 
@@ -458,8 +459,6 @@ void trans_arc_sine( float x_in, float * p_x_trans, float * p_mirror_y1, float *
 	* @param p_mirror_y2 Is the second mirror result (Always set to NAN, only taken for 
 	*		compatibility) with other trans functions  
 */  
-
-
 
 void trans_cosine(float x_in, float * p_x_trans, float * p_mirror_y1, float * p_mirror_y2) { 
 	trans_sine(x_in + M_PI_2, p_x_trans, p_mirror_y1, p_mirror_y2);
