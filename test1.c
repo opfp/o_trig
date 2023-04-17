@@ -10,7 +10,7 @@ void print_help() {
 } 
 
 int main() { 
-	o_trig_init(); 
+	table_set * o_trig = o_trig_init(NULL, TBS_TO_MAKE); 
     // printf("%f\n", o_trig_lookup(SINE, .8, 0) );
     printf("Interactive testing mode, input function id followed by input to receive result in radians\n"); 
     // printf("Input -1 for help, -2 to exit\n"); 
@@ -30,7 +30,7 @@ int main() {
         if ( !rc ) continue; 
 
         if ( func >= 0 && func < NUM_FUNCS && rc == 2 ) { 
-            printf("%s(%f) = %f\n", function_names[func], inval, o_trig_lookup(func, inval, 1 ) ); 
+            printf("%s(%f) = %f\n", function_names[func], inval, o_trig_lookup(o_trig, func, inval, 1 ) ); 
         } 
         
         // else if ( func == -2 ) { 

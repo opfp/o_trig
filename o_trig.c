@@ -1,16 +1,17 @@
 #include "o_trig_priv.h" 
 #include "o_trig.h"
 
-table_set o_trig_obj = {0}; 
+// table_set o_trig_obj = {0}; 
 
 const function_des FUNC_DES[] = { 
-//  rmin    rmax   tmin     tmax    transformer func    table           ascending 
-	{NAN,   NAN,    0,      M_PI_2, &trans_sine,        TB_SINE_COS,    1 },	    // SINE  
-	{-1,    1,      -1,     1,      NULL,               TB_SINE_COS,    1 }, 		// ARCSINE 
-	{NAN,    NAN,   0,      M_PI_2, &trans_cosine,      TB_SINE_COS,    0 }, 	    // COS
-	{-1,    1,      -1,     1,      &trans_arc_cosine,  TB_SINE_COS,    0 }, 		// ARCCOS 
-	{NAN,   NAN,    0,      M_PI,   &trans_tan,         TB_TAN,         1 }, 		// TAN 
-    {NAN,   NAN,    NAN,    NAN,    NULL,               TB_TAN,         1 }        	// ARCTAN
+//  rmin    rmax   tmin     tmax    transformer func    table           ascending   half-size 
+	{NAN,   NAN,    0.0,    M_PI_2, &trans_sine,        TB_SINE_COS,    1,          0}, 	    // SINE  
+	{-1.0,  1.0,    0.0,    1.0,    &trans_arc_sine,    TB_SINE_COS,    1,          0 }, 		// ARCSINE 
+	{NAN,   NAN,    0.0,    M_PI_2, &trans_cosine,      TB_SINE_COS,    1,          0 }, 	    // COS
+                    // making min > max ensures arc_cos will always be transformed (which it always must be) 
+	{-1.0,  1.0,    0.1,    -0.1,   &trans_arc_cosine,  TB_SINE_COS,    1,          0 }, 		// ARCCOS 
+	{NAN,   NAN,    0.0,    M_PI,   &trans_tan,         TB_TAN,         1,          0 }, 		// TAN 
+    {NAN,   NAN,    NAN,    NAN,    NULL,               TB_TAN,         1,          0 }        	// ARCTAN
 };  
 
 const char * function_names[] = {"SINE", "ARC SINE", "COSINE", "ARC COSINE", "TANGENT", "ARC TANGENT" }; 
@@ -22,22 +23,17 @@ const char * function_names[] = {"SINE", "ARC SINE", "COSINE", "ARC COSINE", "TA
 	* @breif initilizes the singleton o_trig_obj, either by calcuating the trig results (via 
 	* 		make_tables) or loading already-generated lookup tables (via read_tables)  
 	* @param table_fp filepath of lookup tables to be loaded (if applicable) 
-	* @param tbs_to_load Bitmap in which tables_to_make & ( FUNC / 2 ) << 1 reflest weather the  
+	* @param tbs_to_load Bitmap in which tables_to_make & ( FUNC / 2 ) << 1 reflects weather the  
 	* 		lookup table for FUNC will be created 
 */ 
 
-int o_trig_init(/*char * table_fp, int tbs_to_load*/) { 
-	/* 
-	if ( table_fp ) { 
-
-	} else { 
-		
-	} 
-	*/
-	o_trig_obj.points = POINTS;//0; 
-	o_trig_obj.contents = TBS_TO_MAKE;
-	gen_lookup_tables(&o_trig_obj); 
-    return 0; // just for now 
+table_set * o_trig_init(char * conf_st,  int tbs_to_load ) { 
+	table_set * o_trig_obj = malloc(sizeof(table_set) ); 
+	o_trig_obj->points = POINTS;//0; 
+	o_trig_obj->contents = tbs_to_load;
+	gen_lookup_tables(o_trig_obj); 
+    
+    return o_trig_obj; // just for now 
 } 
 
 /* 
@@ -52,7 +48,7 @@ int o_trig_init(/*char * table_fp, int tbs_to_load*/) {
     *       exactly matched in the lookup table ). 
 */ 
 
-float o_trig_lookup(enum func infunc, float inval, int quick) { 
+float o_trig_lookup(table_set * o_trig_obj, enum func infunc, float inval, int quick) { 
     assert( (infunc >= 0) && (infunc < NUM_FUNCS) && "lookup: invalid function" ); 
     // get function descriptor 
     function_des fdes = FUNC_DES[infunc]; 
@@ -63,18 +59,21 @@ float o_trig_lookup(enum func infunc, float inval, int quick) {
         return NAN; 
     } 
     float trans_inval = inval; 
-    float mirror_about = NAN; 
+    float mir_1 = NAN;
+    float mir_2 = NAN; 
     
     // if inval is outside table range, transform 
     if ( inval < fdes.table_range_min || inval > fdes.table_range_max ) { 
-        (*fdes.transformer)(inval, &trans_inval, &mirror_about); 
+        (*fdes.transformer)(inval, &trans_inval, &mir_1, &mir_2); //, &y_mirror); 
     } 
 
-    assert ( trans_inval >= fdes.table_range_min && trans_inval <= fdes.table_range_max && "transform failed"); 
-    float * table = o_trig_obj.tables[fdes.table]; 
+    assert ( ( trans_inval >= fdes.table_range_min && trans_inval <= fdes.table_range_max ) 
+        || infunc == ARC_COSINE && "transform failed"); 
+
+    float * table = o_trig_obj->tables[fdes.table]; 
 
     // note that this is the index of X, not the result(Y) ( in the case of inverses, the return is Y ) 
-    int match_i = ltable_bsearch(table, trans_inval, infunc%2, fdes.ascending ); 
+    int match_i = ltable_bsearch(o_trig_obj, table, trans_inval, infunc%2, fdes.ascending); //, fdes.half_size ); 
     // int y_idx = infunc%2 ? 1 : -1; 
     int y_idx = infunc%2 ? -1 : 1; 
 
@@ -85,7 +84,7 @@ float o_trig_lookup(enum func infunc, float inval, int quick) {
 
     if ( !quick && ( fabs(inval_dif = real_in - inval) > ACC_CONST ) ) { 
         int next_i;
-        if ( !(match_i+2< o_trig_obj.points ) && ( match_i < 2 || fdes.ascending && inval_dif > 0
+        if ( !(match_i+2< o_trig_obj->points ) && ( match_i < 2 || fdes.ascending && inval_dif > 0
             || !fdes.ascending && inval_dif < 0 ) )
         {
             next_i = match_i+2; 
@@ -97,9 +96,13 @@ float o_trig_lookup(enum func infunc, float inval, int quick) {
         result += inval_dif*slope; 
     }
 
-    if ( ! isnan(mirror_about) ) { 
-        result += 2.0 * ( mirror_about - result ); 
+    if ( ! isnan(mir_1) ) { 
+		result = REFLECT_Y(result, mir_1); 
     } 
+
+    if ( ! isnan(mir_2) ) { 
+		result = REFLECT_Y(result, mir_2); 
+    }
 
     return result; 
 }
@@ -136,7 +139,7 @@ int gen_lookup_tables( table_set * dest ) {
 	int mask = 1;  
 	for ( int i = 0; i < NUM_FUNCS; i++ ) { 
 		if ( mask & tables_to_make ) { 
-			o_trig_obj.tables[i] = malloc(points * 2 * sizeof(float)); 
+			dest->tables[i] = malloc(points * 2 * sizeof(float)); 
 		}
 		mask <<= 1;  
 	}  
@@ -149,22 +152,27 @@ int gen_lookup_tables( table_set * dest ) {
      (after incrimenting either X or Y, in this case X) 
     */ 
 
-   float px = M_SQRT2/2.0; 
-   float py = px; 
+   float px = 1; 
+   float py = 0; 
 
-   float x_inc_per_point = (1.0 - px ) / points; 
+   float x_inc_per_point = 1.0 / points; 
 
    if ( VDEBUG ) printf("x_inc_per_point : %f\n", x_inc_per_point); 
 
    float cx; 
    float cy; 
    float hyp_len; 
-   float arc_len = M_PI_4; 
+   float arc_len = 0; //M_PI_2; 
 
-   int i = points; 
+   
 
-   while ( i > -1 ) { 
-        cx = px + x_inc_per_point;  
+   char calc_sincos = tables_to_make & ( 1 << TB_SINE_COS ); 
+   char calc_tan = tables_to_make & ( 1 << TB_TAN ); 
+//    int start_calc_tan = (points/2); 
+    
+    int i = 0; 
+    while ( i < points ) { 
+        cx = px - x_inc_per_point;  
         cy = QUAD_SOLVE_P(1,0, (pow(cx,2) - 1.0) ); // use quadratic formula to find next point on circle 
 
         if ( VDEBUG ) printf("%f, %f\n", cx, cy); 
@@ -182,26 +190,34 @@ int gen_lookup_tables( table_set * dest ) {
 
         // printf("point distance: %f\n", hyp_len); 
 
-        arc_len -=  DIST(px, py, cx, cy ); 
+        arc_len += DIST(px, py, cx, cy ); 
 		
-        if ( tables_to_make & ( 1 << TB_SINE_COS ) ) { 
-		    o_trig_obj.tables[TB_SINE_COS][i*2] = arc_len; // theta 
-            o_trig_obj.tables[TB_SINE_COS][(i*2)+1] = cy; // sine(theta) 
-            if ( VDEBUG ) printf("sin(%f) = %f\n", o_trig_obj.tables[TB_SINE_COS][i*2], o_trig_obj.tables[TB_SINE_COS][(i*2)+1]); 
+        if ( calc_sincos ) { 
+		    dest->tables[TB_SINE_COS][i*2] = arc_len; // theta 
+            dest->tables[TB_SINE_COS][(i*2)+1] = cy; // sine(theta) 
+            if ( VDEBUG ) printf("%i: sin(%f) = %f\n", i, dest->tables[TB_SINE_COS][i*2], dest->tables[TB_SINE_COS][(i*2)+1]); 
         } 
 
-        if ( tables_to_make & ( 1 << TB_TAN ) ) { 
-		    o_trig_obj.tables[TB_TAN][i*2] = arc_len; // theta 
-            o_trig_obj.tables[TB_TAN][(i*2)+1] = cy / cx; // tan(theta) 
-            if ( VDEBUG ) printf("tan(%f) = %f\n", o_trig_obj.tables[TB_TAN][i*2], o_trig_obj.tables[TB_TAN][(i*2)+1]); 
+        if ( calc_tan ) { 
+		    dest->tables[TB_TAN][i*2] = arc_len; // theta 
+            dest->tables[TB_TAN][(i*2)+1] = cy / cx; // tan(theta) 
+            if ( VDEBUG ) printf("%i: tan(%f) = %f\n", i, dest->tables[TB_TAN][i*2], dest->tables[TB_TAN][(i*2)+1]); 
         } 
 
         px = cx; 
         py = cy; 
-        --i; 
+        ++i; 
+        // if ( !calc_tan && i == start_calc_tan && ( tables_to_make & ( 1 << TB_TAN ) ) ) { 
+        //     if (VDEBUG) printf("Start calculating tan at %i (points %i)\n", i, points ); 
+        //     calc_tan = 1; 
+        // }  
 	} 
 
-    if ( VDEBUG ) printf("arc len innacuracy (should be 0): %f\n", arc_len ); 
+    dest->points=i; // don't accound for points that were not generated 
+    // points >>=1; // ensure points %2 == 0 (even if we lose a datapoint) 
+    // points <<=1; 
+
+    if ( VDEBUG ) printf("arc len innacuracy (should be 0): %f\n", arc_len - M_PI_2 ); 
 
     return 0; // just for now 
 }
@@ -218,8 +234,8 @@ int gen_lookup_tables( table_set * dest ) {
 	* @return index of the closest match to search_val 
 */ 
 
-int ltable_bsearch( float * table, float search_val, int offset, char ascending) { 
-	int points = o_trig_obj.points; 
+int ltable_bsearch(  table_set * o_trig_obj, float * table, float search_val, int offset, char ascending) { 
+	int points = o_trig_obj->points; 
     int search_inc = points / 2; 
 	unsigned si = points + offset;
 	// check edge cases
@@ -238,7 +254,7 @@ int ltable_bsearch( float * table, float search_val, int offset, char ascending)
     float up_dif; 
     float dw_dif; 
 	
-	while (1) { 
+	while (! ( search_inc & 1 ) ) { 
 		up_gz = ( up_dif = table[si+2] - search_val) > 0; // find the parity of i+1 and i-1 
 		dw_gz = ( dw_dif = table[si-2] - search_val) > 0; // (really i+2 / i-2 because of the offset) 
 		
@@ -255,9 +271,11 @@ int ltable_bsearch( float * table, float search_val, int offset, char ascending)
 		} 
 		
 		search_inc >>= 1; // divide search incriment by two 
-	}   
+	}  
 
-} 
+    assert ( 0 && "search failed");  
+
+}
 
 /* 
     * @scope private 
@@ -266,11 +284,13 @@ int ltable_bsearch( float * table, float search_val, int offset, char ascending)
     *       sin( 4pi / 3) == -1 * sin( 2pi / 3 ) 
     * @param x_in The input value 
     * @param p_x_trans Pointer to where the result (x after transformation) is to be stored 
-    * @param p_mirror_ab Pointer to where the mirror result is to be stored 
+    * @param p_mirror_y1 Pointer to where the mirror result is to be stored (about y=?)  
+	* @param p_mirror_y2 Is the second mirror result (Always set to NAN, only taken for 
+			compatibility) with other trans functions 
 */  
 
-void trans_sine(float x_in, float * p_x_trans, float * p_mirror_ab ) { 
-    float mirror = NAN; 
+void trans_sine(float x_in, float * p_x_trans, float * p_mirror_y1, float * p_mirror_y2 ) { 
+    float mir_1 = NAN; 
     
     // first, transform into (0, 2pi) (abs ensures fmod result is non negitive) 
     float x_trans = fmod( fabs(x_in) , 2*M_PI ); 
@@ -282,24 +302,51 @@ void trans_sine(float x_in, float * p_x_trans, float * p_mirror_ab ) {
     // now, if on (0, pi/2), no further transform nesecary 
     if ( x_trans <= M_PI_2 ) goto _ret; 
    
-    // if on (pi/2, pi), mirror x about x=pi/2 
+    // if on (pi/2, pi), mir_1 x about x=pi/2 
     if ( x_trans <= M_PI ) { 
-        x_trans -= (x_trans - M_PI_2); 
+        x_trans -= 2.0 * (x_trans - M_PI_2); 
         goto _ret; 
     } 
     // if on (pi, 3pi / 2 ), subtract pi from x and multiply result by negitive one 
     if ( x_trans <= 1.5 * M_PI ) { 
         x_trans -= M_PI; 
-        mirror = 0; // mirror result about y=0 (multiply by negitive one) 
+        mir_1 = 0; // mir_1 result about y=0 (multiply by negitive one) 
         goto _ret; 
     } 
     // final case (3pi /2 , 2pi ) 
-    x_trans -= ( x_in - M_PI ); 
-    mirror = 0; 
+    x_trans -= 2.0 * ( x_in - M_PI ); 
+    mir_1 = 0; // mir_1 result about y=0 (multiply by negitive one) 
 
     _ret:; 
     *p_x_trans = x_trans; 
-    *p_mirror_ab = mirror; 
+    *p_mirror_y1 = mir_1;
+ 	*p_mirror_y2 = NAN; 
+} 
+
+/* 
+    * @scope private 
+    * @brief Transforms input value for sine function into a value which may be used to perform a 
+    *       table lookup. 
+    * @param x_in The input value 
+    * @param p_x_trans Pointer to where the result (x after transformation) is to be stored 
+    * @param p_mirror_y1 Pointer to where the mirror result is to be stored
+   	* @param p_mirror_y2 Is the second mirror result (Always set to NAN, only taken for 
+	*		compatibility) with other trans functions  
+
+*/ 
+
+void trans_arc_sine( float x_in, float * p_x_trans, float * p_mirror_y1, float * p_mirror_y2 ) { 
+    float trans_x = x_in; 
+    float mir_1 = NAN; 
+    
+    if ( x_in < 0 ) { 
+        trans_x = 0.0 - x_in; 
+        mir_1 = 0.0; 
+    } 
+
+    *p_x_trans = trans_x; 
+    *p_mirror_y1 = mir_1;
+ 	*p_mirror_y2 = NAN; 
 } 
 
 /* 
@@ -308,11 +355,15 @@ void trans_sine(float x_in, float * p_x_trans, float * p_mirror_ab ) {
     *       a table lookup. Takes advantage of the relationship cos(x) = sin(x + pi/2) 
     * @param x_in The input value 
     * @param p_x_trans Pointer to where the result (x after transformation) is to be stored 
-    * @param p_mirror_ab Pointer to where the mirror result is to be stored 
+    * @param p_mirror_y1 Pointer to where the mirror result is to be stored
+	* @param p_mirror_y2 Is the second mirror result (Always set to NAN, only taken for 
+	*		compatibility) with other trans functions  
 */  
 
-void trans_cosine(float x_in, float * p_x_trans, float * p_mirror_ab) { 
-	trans_sine(x_in + M_PI_2, p_x_trans, p_mirror_ab);
+
+
+void trans_cosine(float x_in, float * p_x_trans, float * p_mirror_y1, float * p_mirror_y2) { 
+	trans_sine(x_in + M_PI_2, p_x_trans, p_mirror_y1, p_mirror_y2);
 } 
 
 /* 
@@ -322,12 +373,24 @@ void trans_cosine(float x_in, float * p_x_trans, float * p_mirror_ab) {
     *       y = pi / 4 
     * @param y_in The input value 
     * @param p_x_trans Pointer to where the result (x after transformation) is to be stored 
-    * @param p_mirror_ab Pointer to where the mirror result is to be stored 
+    * @param p_mirror_y1 Pointer to where the mirror result is to be stored
+	* @param p_mirror_y2 Is the second mirror result, which is needed for arc cosine lookups 
+	* 		where x < 0.  
 */ 
 
-void trans_arc_cosine(float y_in, float * p_x_trans, float * p_mirror_ab) { 
-    *p_x_trans = y_in; 
-    *p_mirror_ab = M_PI_4; 
+void trans_arc_cosine(float x_in, float * p_x_trans, float * p_mirror_y1, float * p_mirror_y2) { 
+    float trans_x = x_in; 
+    float mir_1 = M_PI_4;
+	float mir_2 = NAN;  
+
+    if ( x_in < 0 ) { 
+        trans_x = 0.0 - x_in;
+		mir_2 = M_PI_2;  
+    } 
+
+    *p_x_trans = trans_x; 
+    *p_mirror_y1 = mir_1;
+	*p_mirror_y2 = mir_2;  
 } 
 
 /* 
@@ -336,15 +399,16 @@ void trans_arc_cosine(float y_in, float * p_x_trans, float * p_mirror_ab) {
     *       a table lookup.
     * @param x_in The input value 
     * @param p_x_trans Pointer to where the result (x after transformation) is to be stored 
-    * @param p_mirror_ab Pointer to where the mirror result is to be stored 
+    * @param p_mirror_y1 Pointer to where the mirror result is to be stored 
 */ 
 
-void trans_tan(float y_in, float * p_x_trans, float * p_mirror_ab) { 
+void trans_tan(float x_in, float * p_x_trans, float * p_mirror_y1, float * p_mirror_y2) { 
     // float x_trans = fmod( ( y_in < 0 ) ? -1.0 * y_in : y_in, M_PI ); 
-    float x_trans = fmod( y_in * ( y_in < 0 ? -1 : 1 ),  M_PI ); 
+    float x_trans = fmod( x_in * ( x_in < 0 ? -1 : 1 ),  M_PI ); 
   
-    *p_x_trans = y_in; 
-    *p_mirror_ab = x_trans < 0 ? 0 : NAN; 
+    *p_x_trans = x_in; 
+    *p_mirror_y1 = x_trans < 0 ? 0 : NAN;
+	*p_mirror_y2 = NAN;  
 } 
 
 /* 
