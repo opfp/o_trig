@@ -10,8 +10,8 @@ const function_des FUNC_DES[] = {
 	{NAN,   NAN,    0.0,    M_PI_2, &trans_cosine,      TB_SINE_COS,    1,          0 }, 	    // COS
                     // making min > max ensures arc_cos will always be transformed (which it always must be) 
 	{-1.0,  1.0,    0.1,    -0.1,   &trans_arc_cosine,  TB_SINE_COS,    1,          0 }, 		// ARCCOS 
-	{NAN,   NAN,    0.0,    M_PI,   &trans_tan,         TB_TAN,         1,          0 }, 		// TAN 
-    {NAN,   NAN,    NAN,    NAN,    NULL,               TB_TAN,         1,          0 }        	// ARCTAN
+	{NAN,   NAN,    0.0,    M_PI_2, &trans_tan,         TB_TAN,         1,          0 }, 		// TAN 
+    {NAN,   NAN,    0.0,    NAN,    &trans_tan,     TB_TAN,         1,          0 }        	// ARCTAN
 };  
 
 const char * function_names[] = {"SINE", "ARC SINE", "COSINE", "ARC COSINE", "TANGENT", "ARC TANGENT" }; 
@@ -67,8 +67,9 @@ float o_trig_lookup(table_set * o_trig_obj, enum func infunc, float inval, int q
         (*fdes.transformer)(inval, &trans_inval, &mir_1, &mir_2); //, &y_mirror); 
     } 
 
-    assert ( ( trans_inval >= fdes.table_range_min && trans_inval <= fdes.table_range_max ) 
-        || infunc == ARC_COSINE && "transform failed"); 
+    assert ( ( isnan(fdes.table_range_min) || trans_inval >= fdes.table_range_min) && 
+             ( isnan(fdes.table_range_max) || trans_inval <= fdes.table_range_max) && 
+            "transform failed" ); 
 
     float * table = o_trig_obj->tables[fdes.table]; 
 
@@ -404,9 +405,17 @@ void trans_arc_cosine(float x_in, float * p_x_trans, float * p_mirror_y1, float 
 
 void trans_tan(float x_in, float * p_x_trans, float * p_mirror_y1, float * p_mirror_y2) { 
     // float x_trans = fmod( ( y_in < 0 ) ? -1.0 * y_in : y_in, M_PI ); 
-    float x_trans = fmod( x_in * ( x_in < 0 ? -1 : 1 ),  M_PI ); 
+    float mirror_y1 = NAN; 
+    float x_trans = x_in + M_PI_2; 
+    x_trans = fmod( x_trans,  M_PI ); 
+    x_trans -= M_PI_2; 
+    
+    if ( x_trans < 0 ) { 
+        mirror_y1 = 0; 
+        x_trans *= -1.0; 
+    } 
   
-    *p_x_trans = x_in; 
+    *p_x_trans = x_trans; 
     *p_mirror_y1 = x_trans < 0 ? 0 : NAN;
 	*p_mirror_y2 = NAN;  
 } 

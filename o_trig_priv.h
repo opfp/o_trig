@@ -43,7 +43,9 @@ int ltable_bsearch( table_set * o_trig_obj, float * table, float search_val, int
 void trans_sine(float x_in, float * x_trans, float * mirror_y1, float * mirror_y2 ); 
 void trans_arc_sine(float x_in, float * x_trans, float * mirror_ab, float * mirror_y2 ); 
 void trans_cosine(float x_in, float * x_trans, float * mirror_ab, float * mirror_y2); 
-void trans_tan(float x_in, float * x_trans, float * mirror_ab, float * mirror_y2); 
 void trans_arc_cosine(float, float * x_trans, float * mirror_ab, float * mirror_y2); 
+void trans_tan(float x_in, float * x_trans, float * mirror_ab, float * mirror_y2); 
+// void trans_arc_tan(float x_in, float * x_trans, float * mirror_ab, float * mirror_y2); 
+
 
 #endif 
