@@ -67,9 +67,9 @@ float o_trig_lookup(table_set * o_trig_obj, enum func infunc, float inval, int q
         (*fdes.transformer)(inval, &trans_inval, &mir_1, &mir_2); //, &y_mirror); 
     } 
 
-    assert ( ( isnan(fdes.table_range_min) || trans_inval >= fdes.table_range_min) && 
-             ( isnan(fdes.table_range_max) || trans_inval <= fdes.table_range_max) && 
-            "transform failed" ); 
+    assert( ( isnan(fdes.table_range_min) || trans_inval >= fdes.table_range_min) && 
+            ( isnan(fdes.table_range_max) || trans_inval <= fdes.table_range_max) || 
+            infunc == ARC_COSINE && "transform failed" ); 
 
     float * table = o_trig_obj->tables[fdes.table]; 
 
@@ -81,21 +81,27 @@ float o_trig_lookup(table_set * o_trig_obj, enum func infunc, float inval, int q
     float real_in = table[match_i]; 
     float result = table[match_i + y_idx]; 
 
-    float inval_dif; //  = real_in - inval;  
+    float inval_dif; //  = real_in - inval; if +, real_in > inval   
 
     if ( !quick && ( fabs(inval_dif = real_in - inval) > ACC_CONST ) ) { 
-        int next_i;
-        if ( !(match_i+2< o_trig_obj->points ) && ( match_i < 2 || fdes.ascending && inval_dif > 0
-            || !fdes.ascending && inval_dif < 0 ) )
-        {
-            next_i = match_i+2; 
-        } else { 
-            next_i = match_i-2; 
+        int adj_i = inval_dif > 0 && fdes.ascending || inval_dif < 0 && !fdes.ascending ? match_i+2 : match_i-2; 
+
+        if ( adj_i < 0 ) { 
+            adj_i += 4; 
+        } else if ( adj_i >= o_trig_obj->points*2 ) { 
+            adj_i -= 4; 
         } 
 
-        float slope = (real_in - table[next_i]) / (result - table[next_i+y_idx]) ;
+        float xdif = real_in - table[adj_i]; 
+        float ydif = result - table[adj_i+y_idx]; 
+
+        float slope = ydif / xdif; 
+
         result += inval_dif*slope; 
+ 
     }
+
+    // _done_adj:; 
 
     if ( ! isnan(mir_1) ) { 
 		result = REFLECT_Y(result, mir_1); 
@@ -148,6 +154,7 @@ table_set * o_trig_load_file( char * fp ) {
         mask <<= 1; 
     }  
 
+    fgetc(FP); 
     if ( ! feof(FP) ) { 
         fprintf(stderr, "Malformed lookup table file %s\n", fp); 
         // exit(-3); 
@@ -189,6 +196,7 @@ void o_trig_write_file( table_set * obj, char * fp ) {
     fclose(FP); 
 
 } 
+
 /* 
     * @scope public 
     * @breif frees all memory allocated for this o_trig obj 
@@ -354,10 +362,12 @@ int ltable_bsearch(  table_set * o_trig_obj, float * table, float search_val, in
     float up_dif; 
     float dw_dif; 
 	
-	while (! ( search_inc & 1 ) ) { 
+	while ( search_inc /*> 1*/ ) { 
 		up_gz = ( up_dif = table[si+2] - search_val) > 0; // find the parity of i+1 and i-1 
 		dw_gz = ( dw_dif = table[si-2] - search_val) > 0; // (really i+2 / i-2 because of the offset) 
 		
+        // if ( VDEBUG ) printf("%i\n", si ); 
+
 		if ( up_gz != dw_gz ) { // a parity change between i-1 and i+1 means we've hit our mark 
 			int closer_up_dw = fabs(up_dif) > fabs(dw_dif) ? si-2 : si+2; 
             return fabs(table[si] - search_val ) > fabs(table[closer_up_dw] - search_val) ? closer_up_dw : si; 
@@ -461,7 +471,7 @@ void trans_arc_sine( float x_in, float * p_x_trans, float * p_mirror_y1, float *
 */  
 
 void trans_cosine(float x_in, float * p_x_trans, float * p_mirror_y1, float * p_mirror_y2) { 
-	trans_sine(x_in + M_PI_2, p_x_trans, p_mirror_y1, p_mirror_y2);
+	trans_sine(x_in - M_PI_2, p_x_trans, p_mirror_y1, p_mirror_y2);
 } 
 
 /* 
@@ -513,7 +523,7 @@ void trans_tan(float x_in, float * p_x_trans, float * p_mirror_y1, float * p_mir
     } 
   
     *p_x_trans = x_trans; 
-    *p_mirror_y1 = x_trans < 0 ? 0 : NAN;
+    *p_mirror_y1 = mirror_y1;
 	*p_mirror_y2 = NAN;  
 } 
 

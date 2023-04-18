@@ -3,3 +3,6 @@
 .DS_Store
 *.txt
 libconfig-1.7.3
+tables/*.otb
+trace_results/*
+plots/*.pdf
