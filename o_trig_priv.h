@@ -60,7 +60,7 @@ typedef struct  {
 	void (* transformer)(float, float *, float *, float *);
 	int table;   
     char ascending; 
-    char half_size; 
+    char always_transform; 
 } function_des; 
 
 // typedef struct transform_result{ // could just pack into a double, but that's not as portable 
