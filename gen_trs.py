@@ -15,4 +15,5 @@ for i, func in enumerate(functions) :
     fout = open("traces/"+func[0]+".tr", "w+") 
     for j in func[1] : 
         fout.write("%i %f\n" % ( i, j ) ) 
+    fout.write("-1\n") 
     fout.close() 

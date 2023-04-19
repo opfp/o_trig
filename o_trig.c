@@ -4,13 +4,14 @@
 // table_set o_trig_obj = {0}; 
 
 const function_des FUNC_DES[] = { 
-//  rmin    rmax   tmin     tmax    transformer func    table           ascending   always trans 
+//  rmin    rmax   tmin     tmax    transformer func    table           ascending   half-size 
 	{NAN,   NAN,    0.0,    M_PI_2, &trans_sine,        TB_SINE_COS,    1,          0}, 	    // SINE  
 	{-1.0,  1.0,    0.0,    1.0,    &trans_arc_sine,    TB_SINE_COS,    1,          0 }, 		// ARCSINE 
-	{NAN,   NAN,    0.0,    M_PI_2, &trans_cosine,      TB_SINE_COS,    1,          1 }, 	    // COS
-	{-1.0,  1.0,    0.0,    1.0,    &trans_arc_cosine,  TB_SINE_COS,    1,          1 }, 		// ARCCOS 
+	{NAN,   NAN,    0.0,    M_PI_2, &trans_cosine,      TB_SINE_COS,    1,          0 }, 	    // COS
+                    // making min > max ensures arc_cos will always be transformed (which it always must be) 
+	{-1.0,  1.0,    0.1,    -0.1,   &trans_arc_cosine,  TB_SINE_COS,    1,          0 }, 		// ARCCOS 
 	{NAN,   NAN,    0.0,    M_PI_2, &trans_tan,         TB_TAN,         1,          0 }, 		// TAN 
-    {NAN,   NAN,    0.0,    NAN,    &trans_tan,         TB_TAN,         1,          0 }        	// ARCTAN
+    {NAN,   NAN,    0.0,    NAN,    &trans_tan,     TB_TAN,         1,          0 }        	// ARCTAN
 };  
 
 const char * function_names[] = {"SINE", "ARC SINE", "COSINE", "ARC COSINE", "TANGENT", "ARC TANGENT" }; 
@@ -62,13 +63,13 @@ float o_trig_lookup(table_set * o_trig_obj, enum func infunc, float inval, int q
     float mir_2 = NAN; 
     
     // if inval is outside table range, transform 
-    if ( fdes.always_transform || inval < fdes.table_range_min || inval > fdes.table_range_max ) { 
+    if ( inval < fdes.table_range_min || inval > fdes.table_range_max ) { 
         (*fdes.transformer)(inval, &trans_inval, &mir_1, &mir_2); //, &y_mirror); 
     } 
 
     assert( ( isnan(fdes.table_range_min) || trans_inval >= fdes.table_range_min) && 
-            ( isnan(fdes.table_range_max) || trans_inval <= fdes.table_range_max) && 
-            "transform failed" ); 
+            ( isnan(fdes.table_range_max) || trans_inval <= fdes.table_range_max) || 
+            infunc == ARC_COSINE && "transform failed" ); 
 
     float * table = o_trig_obj->tables[fdes.table]; 
 
@@ -470,7 +471,7 @@ void trans_arc_sine( float x_in, float * p_x_trans, float * p_mirror_y1, float *
 */  
 
 void trans_cosine(float x_in, float * p_x_trans, float * p_mirror_y1, float * p_mirror_y2) { 
-	trans_sine(x_in + M_PI_2, p_x_trans, p_mirror_y1, p_mirror_y2);
+	trans_sine(x_in - M_PI_2, p_x_trans, p_mirror_y1, p_mirror_y2);
 } 
 
 /* 

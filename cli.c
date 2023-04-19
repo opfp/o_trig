@@ -20,7 +20,7 @@ int main(int argc, char * * argv ) {
 	int tables = 0; // By default, do everything 
     
     // char * eval = NULL; 
-    char quick = 1; // for now, !quick does not work  
+    char quick = 0; 
     char interactive = 0; 
     char csv = 0; 
 
