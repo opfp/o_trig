@@ -164,7 +164,7 @@ table_set * o_trig_load_file( char * fp ) {
 
 /* 
 	* @scope public 
-	* @brief loads Saves generated lookup table to memory for future use 
+	* @brief loads Saves generated lookup table to disk for future use 
     * @param obj the table object to be saved  
 	* @param fp path to the lookup table on disk 
 */ 
@@ -525,12 +525,4 @@ void trans_tan(float x_in, float * p_x_trans, float * p_mirror_y1, float * p_mir
     *p_mirror_y1 = mirror_y1;
 	*p_mirror_y2 = NAN;  
 } 
-
-/* 
-    * @scope private 
-	* @breif Generates lookup tables for trig function results (calcu
-	* @param point_den Number of points which will be used to generate the lookup tables
-	* @param struct result_des Result descriptor which regulates how results are recorded 
-	* @param tables_to_make Bitmap in which tables_to_make & ( FUNC / 2 ) << 1 reflest weather the lookup table 
-	* 		for FUNC will be created   
-*/  
+ 

@@ -21,7 +21,7 @@ for table in tables/*; do
         # echo "X, "$trname"(x) in radians" > trace_results/$tbname"_"$trname"_q.csv"
         # echo "X, Y" > trace_results/$tbname"_"$trname"_q.csv"
         ./cli -f $table -q -c < $trace > trace_results/$tbname"_"$trname"_q.csv" 
-        python3 make_plots.py $tbname"_"$trname"_q" 
+		# python3 make_plots.py $tbname"_"$trname"_q" 
 
         # echo "X, "$trname"(x) in radians" > trace_results/$tbname"_"$trname".csv"
         # echo "X, Y" > trace_results/$tbname"_"$trname".csv"
