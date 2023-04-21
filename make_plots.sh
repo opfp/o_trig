@@ -1,5 +1,7 @@
 #!/bin/bash 
 
+# Calls make_plots.py on each trace result, generating graphs of the results 
+
 echo "./make_prod.sh cli" 
 ./make_prod.sh cli 
 

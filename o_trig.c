@@ -4,14 +4,13 @@
 // table_set o_trig_obj = {0}; 
 
 const function_des FUNC_DES[] = { 
-//  rmin    rmax   tmin     tmax    transformer func    table           ascending   half-size 
+//  rmin    rmax   tmin     tmax    transformer func    table           ascending   always trans 
 	{NAN,   NAN,    0.0,    M_PI_2, &trans_sine,        TB_SINE_COS,    1,          0}, 	    // SINE  
 	{-1.0,  1.0,    0.0,    1.0,    &trans_arc_sine,    TB_SINE_COS,    1,          0 }, 		// ARCSINE 
-	{NAN,   NAN,    0.0,    M_PI_2, &trans_cosine,      TB_SINE_COS,    1,          0 }, 	    // COS
-                    // making min > max ensures arc_cos will always be transformed (which it always must be) 
-	{-1.0,  1.0,    0.1,    -0.1,   &trans_arc_cosine,  TB_SINE_COS,    1,          0 }, 		// ARCCOS 
+	{NAN,   NAN,    0.0,    M_PI_2, &trans_cosine,      TB_SINE_COS,    1,          1 }, 	    // COS
+	{-1.0,  1.0,    0.0,    1.0,    &trans_arc_cosine,  TB_SINE_COS,    1,          1 }, 		// ARCCOS 
 	{NAN,   NAN,    0.0,    M_PI_2, &trans_tan,         TB_TAN,         1,          0 }, 		// TAN 
-    {NAN,   NAN,    0.0,    NAN,    &trans_tan,     TB_TAN,         1,          0 }        	// ARCTAN
+    {NAN,   NAN,    0.0,    NAN,    &trans_tan,         TB_TAN,         1,          0 }        	// ARCTAN
 };  
 
 const char * function_names[] = {"SINE", "ARC SINE", "COSINE", "ARC COSINE", "TANGENT", "ARC TANGENT" }; 
@@ -63,13 +62,13 @@ float o_trig_lookup(table_set * o_trig_obj, enum func infunc, float inval, int q
     float mir_2 = NAN; 
     
     // if inval is outside table range, transform 
-    if ( inval < fdes.table_range_min || inval > fdes.table_range_max ) { 
+    if ( fdes.always_transform || inval < fdes.table_range_min || inval > fdes.table_range_max ) { 
         (*fdes.transformer)(inval, &trans_inval, &mir_1, &mir_2); //, &y_mirror); 
     } 
 
     assert( ( isnan(fdes.table_range_min) || trans_inval >= fdes.table_range_min) && 
-            ( isnan(fdes.table_range_max) || trans_inval <= fdes.table_range_max) || 
-            infunc == ARC_COSINE && "transform failed" ); 
+            ( isnan(fdes.table_range_max) || trans_inval <= fdes.table_range_max) && 
+            "transform failed" ); 
 
     float * table = o_trig_obj->tables[fdes.table]; 
 
@@ -165,7 +164,7 @@ table_set * o_trig_load_file( char * fp ) {
 
 /* 
 	* @scope public 
-	* @brief loads Saves generated lookup table to disk for future use 
+	* @brief loads Saves generated lookup table to memory for future use 
     * @param obj the table object to be saved  
 	* @param fp path to the lookup table on disk 
 */ 
@@ -471,7 +470,7 @@ void trans_arc_sine( float x_in, float * p_x_trans, float * p_mirror_y1, float *
 */  
 
 void trans_cosine(float x_in, float * p_x_trans, float * p_mirror_y1, float * p_mirror_y2) { 
-	trans_sine(x_in - M_PI_2, p_x_trans, p_mirror_y1, p_mirror_y2);
+	trans_sine(x_in + M_PI_2, p_x_trans, p_mirror_y1, p_mirror_y2);
 } 
 
 /* 
@@ -526,4 +525,12 @@ void trans_tan(float x_in, float * p_x_trans, float * p_mirror_y1, float * p_mir
     *p_mirror_y1 = mirror_y1;
 	*p_mirror_y2 = NAN;  
 } 
- 
+
+/* 
+    * @scope private 
+	* @breif Generates lookup tables for trig function results (calcu
+	* @param point_den Number of points which will be used to generate the lookup tables
+	* @param struct result_des Result descriptor which regulates how results are recorded 
+	* @param tables_to_make Bitmap in which tables_to_make & ( FUNC / 2 ) << 1 reflest weather the lookup table 
+	* 		for FUNC will be created   
+*/  
