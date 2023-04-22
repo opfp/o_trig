@@ -1,7 +1,8 @@
-# o_trig: a trig library 
+# o_trig: A Trig Library 
+## Owen Phillips 4/22/23 
 
 o_trig is a simple trigonometry library which can create and use lookup tables to 
-solve six trig functions: Sine, arc-sine, cosine, arc-cosine, tangent and arc-tangent. 
+solve six trig functions: sine, arc-sine, cosine, arc-cosine, tangent and arc-tangent. 
 
 # Using the library 
 
@@ -28,7 +29,7 @@ or run the pre-shipped traces on it
 ```
 ./run_traces.sh 
 ``` 
-After running the traces, you may use them to generate graphs of the results 
+After running the traces, you may use them to generate graphs of the results (found in plots). 
 ```
 ./make_plots.sh
 ``` 
@@ -53,13 +54,6 @@ cli.c provides a simple command line interface to generate and query a lookup ta
                     mode except there are no instructions, and results are returned 
                     in X, Y format. 
 
-* Table generation ( o_trig.c : gen_lookup_tables() ) 
-To generate lookup tables, a point-cloud representing an arc of pi/2 radians is 
-generated and used to calculate the relevant values. The non-inverse functions 
-receive an angle (theta) as input and return a ratio ( s1 / s2 ) of two sides 
-in a right-triangle constructed with the given angle. The inverse functions 
-receive a ratio and return an angle. 
-
 ## Space saving measures 
 
 While sine and cosine have a period of 2 pi, the entire function may actually be 
@@ -75,7 +69,13 @@ Similarly, Because cos(x) = sine(x + pi/2), sine and cosine are able to share a 
 table, with cosine inputs also being translated, and outputs modified to provide the 
 correct result. 
 
-## Table generation 
+## Table generation ( o_trig.c : gen_lookup_tables() )
+
+To generate lookup tables, a point-cloud representing an arc of pi/2 radians is 
+generated and used to calculate the relevant values. The non-inverse functions 
+receive an angle (theta) as input and return a ratio ( s1 / s2 ) of two sides 
+in a right-triangle constructed with the given angle. The inverse functions 
+receive a ratio and return an angle. 
 
 It is notable that the value of an angle, in radians, corresponds to the length 
 of the arc of a circle which the angle sweeps out ( arclen = theta * r ). In a 
