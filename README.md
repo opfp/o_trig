@@ -1,8 +1,9 @@
-* o_trig: a trig library 
+#o_trig: a trig library 
+
 o_trig is a simple trigonometry library which can create and use lookup tables to 
 solve six trig functions: Sine, arc-sine, cosine, arc-cosine, tangent and arc-tangent. 
 
-* Using the library 
+#Using the library 
 
 To compile: 
 
@@ -34,7 +35,7 @@ After running the traces, you may use them to generate graphs of the results
 
 cli.c provides a simple command line interface to generate and query a lookup table. 
 
-** Flags for cli 
+###Flags for cli 
 -f [ FILEPATH ] : filepath from which to load/store lookup table. when paired with 
                     -g, the generated lookup table will be written to the specified 
                     filepath. 
@@ -55,7 +56,7 @@ receive an angle (theta) as input and return a ratio ( s1 / s2 ) of two sides
 in a right-triangle constructed with the given angle. The inverse functions 
 receive a ratio and return an angle. 
 
-** Space saving measures 
+##Space saving measures 
 
 While sine and cosine have a period of 2 pi, the entire function may actually be 
 solved only knowing sine(x) on 0, pi/2. This is because sine(x) on [pi/2, pi] is
@@ -70,7 +71,7 @@ Similarly, Because cos(x) = sine(x + pi/2), sine and cosine are able to share a 
 table, with cosine inputs also being translated, and outputs modified to provide the 
 correct result. 
 
-** Table generation 
+##Table generation 
 
 It is notable that the value of an angle, in radians, corresponds to the length 
 of the arc of a circle which the angle sweeps out ( arclen = theta * r ). In a 
@@ -87,7 +88,7 @@ points.
 The formula which describes a circle is quadratic, and therefore the point corresponding 
 with a given x may be found simply via the quadratic formula. 
 
-** Lookup table structure and querying 
+##Lookup table structure and querying 
 
 The lookup tables are structured as a single array of floats, of size points * 2, with 
 angle values at even numbered indices and their corresponding ratio values at i+1. 
