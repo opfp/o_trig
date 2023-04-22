@@ -1,8 +1,10 @@
 .vscode/*
+# debuginfos 
 *.dSYM/*
 .DS_Store
 *.txt
-libconfig-1.7.3
-#tables/*.otb
+# lookup tables should be generated locally ( to ensure sizeof(float) at generation == sizeof(float) at use ) 
+tables/*.otlt 
+# trace results and plots should be generated locally
 trace_results/*
 plots/*.pdf

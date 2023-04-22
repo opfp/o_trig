@@ -43,8 +43,8 @@ table_set * o_trig_init(/*char * conf_st,*/  int tbs_to_load, unsigned points ) 
     *       and infunc ( aprox inval +/- 1) 
     * @param infunc The function 
     * @param inval The input value 
-    * @param quick controlls weather result is sclaed to make it more accurate (for when X is not 
-    *       exactly matched in the lookup table ). 
+    * @param quick (CURRENTLY UNUSED) controlls weather result is sclaed to make it more accurate  
+    *       (for when X is not exactly matched in the lookup table ). 
 */ 
 
 float o_trig_lookup(table_set * o_trig_obj, enum func infunc, float inval, int quick) { 
@@ -82,23 +82,23 @@ float o_trig_lookup(table_set * o_trig_obj, enum func infunc, float inval, int q
 
     float inval_dif; //  = real_in - inval; if +, real_in > inval   
 
-    if ( !quick && ( fabs(inval_dif = real_in - inval) > ACC_CONST ) ) { 
-        int adj_i = inval_dif > 0 && fdes.ascending || inval_dif < 0 && !fdes.ascending ? match_i+2 : match_i-2; 
+    // if ( !quick && ( fabs(inval_dif = real_in - inval) > ACC_CONST ) ) { 
+    //     int adj_i = inval_dif > 0 && fdes.ascending || inval_dif < 0 && !fdes.ascending ? match_i+2 : match_i-2; 
 
-        if ( adj_i < 0 ) { 
-            adj_i += 4; 
-        } else if ( adj_i >= o_trig_obj->points*2 ) { 
-            adj_i -= 4; 
-        } 
+    //     if ( adj_i < 0 ) { 
+    //         adj_i += 4; 
+    //     } else if ( adj_i >= o_trig_obj->points*2 ) { 
+    //         adj_i -= 4; 
+    //     } 
 
-        float xdif = real_in - table[adj_i]; 
-        float ydif = result - table[adj_i+y_idx]; 
+    //     float xdif = real_in - table[adj_i]; 
+    //     float ydif = result - table[adj_i+y_idx]; 
 
-        float slope = ydif / xdif; 
+    //     float slope = ydif / xdif; 
 
-        result += inval_dif*slope; 
+    //     result += inval_dif*slope; 
  
-    }
+    // }
 
     // _done_adj:; 
 
