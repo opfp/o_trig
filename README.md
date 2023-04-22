@@ -39,12 +39,16 @@ cli.c provides a simple command line interface to generate and query a lookup ta
 -f [ FILEPATH ] : filepath from which to load/store lookup table. when paired with 
                     -g, the generated lookup table will be written to the specified 
                     filepath. 
+                    
 -g [ NUM POINTS]: o_trig will generate a lookup table with NUM POINTS values 
+
 -t [ TABLES ]   : a bitmap which specifies which tables (sine = 1, cosine = 2, 
                     points = 4 ) o_trig should generate. If left blank, all will 
                     be generated. 
+                    
 -i              : (interactive) allows the user to query the loaded / generated 
                     lookup table from the command line, with instructions 
+                    
 -c              : (csv) meant for running traces, csv mode is like interactive 
                     mode except there are no instructions, and results are returned 
                     in X, Y format. 
