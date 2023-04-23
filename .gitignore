@@ -8,3 +8,5 @@ tables/*.otlt
 # trace results and plots should be generated locally
 trace_results/*
 plots/*.pdf
+*.bak
+*.swp
