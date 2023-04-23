@@ -100,7 +100,7 @@ The current lookup table scheme used by the library achieves log(n) search times
 while not terrible, does leave some speed to be desired. 
 
 In order to achieve constant search time, the lookup table must be configured such that 
-the index of the result is deducable from the input value. This could be acheived by 
+the index of the result is deducible from the input value. This could be achieved by 
 changing the table generation to ensure even spacing between x values. However, new lookup 
 tables would be required to gain the same advantage in inverse-function lookups, which would
 double memory overhead. 
