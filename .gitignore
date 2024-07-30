@@ -5,8 +5,8 @@
 *.txt
 # lookup tables should be generated locally ( to ensure sizeof(float) at generation == sizeof(float) at use ) 
 tables/*.otlt 
-# trace results and plots should be generated locally
-trace_results/*
+# trace results and plots should be generated locally (own gitignore)
+# trace_results/*
 plots/*.pdf
 *.bak
 *.swp

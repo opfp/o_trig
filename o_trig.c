@@ -126,8 +126,8 @@ table_set * o_trig_load_file( char * fp ) {
         exit(-4); 
     } 
 
-	u_int32_t points; 
-    u_int32_t tables; 
+	uint32_t points; 
+    uint32_t tables; 
     int ecode; 
 
     if ( fread(&tables, 4, 1, FP) != 1 || fread( &points,4, 1, FP) != 1 ) { 

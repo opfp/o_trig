@@ -6,6 +6,7 @@
 #include <math.h>
 #include <assert.h> 
 #include <unistd.h> 
+#include <stdint.h>
 #include "o_trig.h" // circular inclusion? 
 
 // #include <libconfig.h> 
